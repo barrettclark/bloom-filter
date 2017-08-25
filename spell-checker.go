@@ -5,7 +5,19 @@ import (
 	"fmt"
 	"os"
 	"strings"
+    "math/rand"
+    "time"
 )
+
+var letters = []rune("abcdefghijklmnopqrstuvwxyz")
+
+func randSeq(n int) string {
+    b := make([]rune, n)
+    for i := range b {
+        b[i] = letters[rand.Intn(len(letters))]
+    }
+    return string(b)
+}
 
 type SpellChecker struct {
 	bloomFilter BloomFilter
@@ -37,6 +49,8 @@ func (checker SpellChecker) CheckDocument(file *os.File) {
 }
 
 func main() {
+    rand.Seed(time.Now().UnixNano())
+
 	h1 := HashFunction(HashSum)
 	h2 := HashFunction(HashProduct)
 	h3 := HashFunction(HashHash)
@@ -52,7 +66,12 @@ func main() {
 
 	file, _ := os.Open("/usr/share/dict/words")
 	checker.Load(file)
-	fmt.Println(checker.CheckWord("HELLO"))
+
+    dict := make(map[string]int)
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		dict[strings.ToLower(scanner.Text())] = 1
+	}
 
 	var filename string
 	if len(os.Args) == 1 {
@@ -65,4 +84,15 @@ func main() {
 	}
 	document, _ := os.Open(filename)
 	checker.CheckDocument(document)
+
+    attempts := 0
+    falsePositives := 0
+    for i := 1; i <= 10000; i++ {
+        candidate := randSeq(5)
+        if checker.CheckWord(candidate) == true && dict[candidate] == 0 {
+            falsePositives += 1
+        }
+        attempts += 1
+    }
+    fmt.Printf("Attempts: %d\nFalse positives: %d\n", attempts, falsePositives)
 }
